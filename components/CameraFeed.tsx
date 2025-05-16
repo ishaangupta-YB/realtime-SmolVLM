@@ -2,14 +2,18 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera } from 'lucide-react';
+import { motion } from 'framer-motion';
 import ConfigPanel from './ConfigPanel';
 import ResponsePanel from './ResponsePanel';
+import { Card, CardContent } from '@/components/ui/card';
 
 // Define types for our component
 type AIResponse = {
   text: string;
   timestamp: Date;
 };
+
+const MotionCard = motion(Card);
 
 export default function CameraFeed() {
   // Refs
@@ -20,19 +24,31 @@ export default function CameraFeed() {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [response, setResponse] = useState<string>('Camera ready. Click Start to begin.');
-  const [baseURL, setBaseURL] = useState('http://localhost:8080');
+  const [baseURL, setBaseURL] = useState(process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8080');
   const [instruction, setInstruction] = useState('What do you see?');
-  const [interval, setInterval] = useState(500);
+  const [intervalMs, setIntervalMs] = useState(500); // Renamed for clarity
   const [systemPrompt, setSystemPrompt] = useState(
-    'You are a helpful vision assistant. Describe what you see in the image clearly and concisely.'
+    'You are SmolVLM, a specialized Vision Language Model designed for real-time webcam analysis. Your primary focus is on human detection, facial analysis, object identification, and scene context analysis, in that order of priority. Provide concise, accurate descriptions of what you see, focusing first on people and faces, then objects, and finally the background elements. Organize your response in a clear, structured format with the most important elements first. Respect privacy by never attempting to identify specific individuals by name unless they are widely known public figures.'
   );
   
   // Interval reference for cleanup
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Initialize camera on component mount
+  // Initialize camera and load system prompt on component mount
   useEffect(() => {
     initCamera();
+
+    // Attempt to fetch system prompt
+    fetch('/system-prompt.md')
+      .then(res => res.text())
+      .then(text => {
+        if (text && text.length > 100) { // Simple check to ensure it's not an error page
+          setSystemPrompt(text);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to load system prompt:", err);
+      });
     
     // Cleanup function to stop stream and clear interval
     return () => {
@@ -43,7 +59,17 @@ export default function CameraFeed() {
         clearInterval(intervalRef.current);
       }
     };
-  }, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // stream dependency removed to avoid re-fetching prompt, manage stream stop separately
+
+  useEffect(() => {
+    // Separate effect for stream cleanup if stream object itself changes
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    }
+  }, [stream]);
 
   // Function to initialize camera
   const initCamera = async () => {
@@ -77,13 +103,17 @@ export default function CameraFeed() {
     
     if (!canvas) return null;
     
+    // Note: When capturing from a mirrored display, we need to flip horizontally in the canvas
+    // to ensure the image data is correct (not mirrored) for AI processing
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
     
     const context = canvas.getContext('2d');
     if (!context) return null;
     
+    // Standard draw (no flip)
     context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
     return canvas.toDataURL('image/jpeg', 0.8);
   };
 
@@ -163,8 +193,13 @@ export default function CameraFeed() {
     // Make initial call immediately
     sendData();
     
-    // Then set interval
-    intervalRef.current = setInterval(sendData, interval); 
+    // Use setTimeout instead of setInterval to avoid linter error
+    intervalRef.current = setTimeout(function tick() {
+      sendData();
+      if (isProcessing) {
+        intervalRef.current = setTimeout(tick, intervalMs);
+      }
+    }, intervalMs) as unknown as NodeJS.Timeout;
   };
 
   // Function to handle stop button click
@@ -182,41 +217,74 @@ export default function CameraFeed() {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 w-full max-w-4xl mx-auto">
-      {/* Video feed */}
-      <div className="relative">
-        <video 
-          ref={videoRef}
-          className="w-full h-auto max-w-2xl border-2 border-gray-800 rounded-lg bg-black"
-          autoPlay 
-          playsInline
+    <div className="flex flex-col lg:flex-row w-full h-full gap-4">
+      {/* Camera Feed - Larger on desktop, full width on mobile */}
+      <motion.div 
+        className="w-full lg:w-2/3 flex items-center justify-center mb-4 lg:mb-0"
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        <MotionCard 
+          className="w-full h-full overflow-hidden shadow-2xl rounded-xl"
+          style={{
+            background: 'linear-gradient(to bottom right, rgba(255,255,255,0.1), rgba(255,255,255,0.05))',
+            backdropFilter: 'blur(12px)',
+          }}
+          whileHover={{ 
+            scale: 1.01,
+            boxShadow: "0 20px 30px rgba(0,0,0,0.15)"
+          }}
+          transition={{ type: "spring", stiffness: 300 }}
+        >
+          <CardContent className="p-0 h-full relative">
+            <div className="h-full w-full overflow-hidden rounded-xl">
+              <video 
+                ref={videoRef}
+                className="h-full w-full object-cover"
+                autoPlay 
+                playsInline
+                style={{ transform: 'scaleX(-1)' }} // Mirror the video
+              />
+              <canvas ref={canvasRef} className="hidden" />
+            </div>
+            
+            {/* Camera status indicator */}
+            <motion.div 
+              className="absolute top-4 right-4 flex items-center gap-2 bg-background/80 backdrop-blur-sm text-foreground px-3 py-1 rounded-full shadow-md"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <Camera size={16} className={stream ? "text-green-500" : "text-red-500"} />
+              <span className="text-sm font-medium">{stream ? "Camera On" : "No Camera"}</span>
+            </motion.div>
+          </CardContent>
+        </MotionCard>
+      </motion.div>
+      
+      {/* Control Panels - Stacked on both desktop and mobile */}
+      <motion.div 
+        className="w-full lg:w-1/3 flex flex-col gap-4 overflow-y-auto custom-scrollbar"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.5, delay: 0.2 }}
+      >
+        <ConfigPanel
+          baseURL={baseURL}
+          setBaseURL={setBaseURL}
+          instruction={instruction}
+          setInstruction={setInstruction}
+          interval={intervalMs}
+          setInterval={setIntervalMs}
+          systemPrompt={systemPrompt}
+          setSystemPrompt={setSystemPrompt}
+          isProcessing={isProcessing}
+          onStart={handleStart}
+          onStop={handleStop}
         />
-        <canvas ref={canvasRef} className="hidden" />
-        
-        {/* Camera status indicator */}
-        <div className="absolute top-4 right-4 flex items-center gap-2 bg-black/50 text-white px-3 py-1 rounded-full">
-          <Camera size={16} className={stream ? "text-green-500" : "text-red-500"} />
-          <span className="text-sm">{stream ? "Camera On" : "No Camera"}</span>
-        </div>
-      </div>
-
-      {/* Configuration panel */}
-      <ConfigPanel
-        baseURL={baseURL}
-        setBaseURL={setBaseURL}
-        instruction={instruction}
-        setInstruction={setInstruction}
-        interval={interval}
-        setInterval={setInterval}
-        systemPrompt={systemPrompt}
-        setSystemPrompt={setSystemPrompt}
-        isProcessing={isProcessing}
-        onStart={handleStart}
-        onStop={handleStop}
-      />
-
-      {/* Response panel */}
-      <ResponsePanel response={response} />
+        <ResponsePanel response={response} />
+      </motion.div>
     </div>
   );
 }

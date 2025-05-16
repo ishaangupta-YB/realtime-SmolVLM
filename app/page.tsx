@@ -1,10 +1,10 @@
 import CameraFeed from "@/components/CameraFeed";
-
 export default function Home() {
   return (
-    <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold text-center mb-8">Camera Vision AI</h1>
-      <CameraFeed />
+    <div className="h-full flex flex-col items-center p-1 pt-12">
+      <div className="flex-1 w-full max-w-7xl flex items-center justify-center overflow-hidden">
+        <CameraFeed />
+      </div>
     </div>
   );
 }
