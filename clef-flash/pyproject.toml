@@ -1,0 +1,39 @@
+[project]
+name = "clefcam"
+version = "0.1.0"
+description = "Live webcam decisions with Cloudflare's clef-flash decision model"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "httpx>=0.27",
+    "pillow>=11.0",
+    "uvicorn[standard]>=0.32",
+]
+
+[project.optional-dependencies]
+# Everything needed to run clef-flash on this machine.
+local = [
+    "accelerate>=1.10",
+    "huggingface-hub[hf-xet]>=1.0",
+    "safetensors>=0.5",
+    "torch>=2.11",
+    "torchvision>=0.26",
+    "transformers>=5.10.2,<6",
+]
+
+[project.scripts]
+clefcam = "clefcam.__main__:main"
+
+[dependency-groups]
+dev = ["pytest>=8.3"]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["clefcam"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

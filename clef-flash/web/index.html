@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>clef live</title>
+  <meta name="description" content="Ask questions of a live camera and get a probability for every answer, with Cloudflare's clef-flash.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="css/app.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try { const t = JSON.parse(localStorage.getItem("clefcam:settings") || "{}").theme; if (t === "light" || t === "dark") document.documentElement.dataset.theme = t; } catch {}
+  </script>
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M15 10l5-3v10l-5-3"/><rect x="3" y="6" width="12" height="12" rx="2.5"/></symbol>
+    <symbol id="i-screen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m21 16-5-5-9 9"/></symbol>
+    <symbol id="i-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h10M4 18h13"/></symbol>
+    <symbol id="i-list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/></symbol>
+    <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 5 14h6l-1 7 8-11h-6l1-7z"/></symbol>
+    <symbol id="i-code" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></symbol>
+    <symbol id="i-help" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.6 9.3a2.5 2.5 0 0 1 4.8.9c0 1.7-2.4 2.1-2.4 3.6M12 17h.01"/></symbol>
+    <symbol id="i-flip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7 3 12l5 5V7zM16 7l5 5-5 5V7z"/></symbol>
+    <symbol id="i-shot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.4"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="5" width="3.6" height="14" rx="1.2"/><rect x="13.9" y="5" width="3.6" height="14" rx="1.2"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.6v12.8a1 1 0 0 0 1.5.86l10.4-6.4a1 1 0 0 0 0-1.72L9.5 4.74A1 1 0 0 0 8 5.6z"/></symbol>
+    <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12M9 7V4h6v3"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+    <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20V9M7 14l5-5 5 5M5 4h14"/></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4 2.8 19.5h18.4z"/><path d="M12 10v4.5M12 17.4h.01"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></symbol>
+    <symbol id="i-dot" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></symbol>
+    <symbol id="i-rows" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="16" height="6" rx="1.6"/><rect x="4" y="14" width="16" height="6" rx="1.6"/></symbol>
+    <symbol id="i-copyplus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M14 11.5v5M11.5 14h5M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  </defs>
+</svg>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand-mark" viewBox="0 0 40 40" aria-hidden="true">
+        <defs><linearGradient id="bm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a79bff"/><stop offset="1" stop-color="#3987e5"/></linearGradient></defs>
+        <rect x="1" y="1" width="38" height="38" rx="11" fill="url(#bm)"/>
+        <circle cx="20" cy="20" r="8.5" fill="none" stroke="#0d0b1f" stroke-width="3"/>
+        <circle cx="20" cy="20" r="3" fill="#0d0b1f"/>
+        <path d="M31 9.5 26 14.5" stroke="#0d0b1f" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <div>
+        <div class="brand-name">clef<span>live</span></div>
+        <div class="brand-sub">questions in, odds out, every frame</div>
+      </div>
+    </div>
+    <button class="engine-pill" id="enginePill" title="Backend details (I)">
+      <span class="dot" id="engineDot"></span><span id="engineText">connecting…</span>
+    </button>
+
+    <div class="stats" aria-label="Live statistics">
+      <div class="stat" title="Time the backend spent answering the latest frame">
+        <span class="stat-label">model</span>
+        <span class="stat-value" id="statModel">–<small>ms</small></span>
+        <canvas id="statModelSpark" width="92" height="40" aria-hidden="true"></canvas>
+      </div>
+      <div class="stat" title="From capturing a frame to seeing its answer">
+        <span class="stat-label">frame → answer</span>
+        <span class="stat-value" id="statAge">–<small>ms</small></span>
+      </div>
+      <div class="stat" title="Answers per second over the last 3 seconds">
+        <span class="stat-label">decisions / s</span>
+        <span class="stat-value" id="statRate">–</span>
+      </div>
+      <div class="stat" title="Input tokens per request (image + questions + context)">
+        <span class="stat-label">tokens</span>
+        <span class="stat-value" id="statTokens">–</span>
+      </div>
+    </div>
+
+    <nav class="actions" aria-label="Panels">
+      <button class="icon-btn" id="openEditor" title="Questions (E)" aria-label="Edit questions"><svg><use href="#i-list"/></svg></button>
+      <button class="icon-btn" id="openRules" title="Triggers (G)" aria-label="Triggers"><svg><use href="#i-bolt"/></svg></button>
+      <button class="icon-btn" id="openInspector" title="Inspector (I)" aria-label="Inspector"><svg><use href="#i-code"/></svg></button>
+      <button class="icon-btn" id="openSettings" title="Settings (,)" aria-label="Settings"><svg><use href="#i-sliders"/></svg></button>
+      <button class="icon-btn" id="themeToggle" title="Theme (L)" aria-label="Toggle theme"><svg><use href="#i-moon"/></svg></button>
+      <button class="icon-btn" id="openHelp" title="Shortcuts (?)" aria-label="Keyboard shortcuts"><svg><use href="#i-help"/></svg></button>
+    </nav>
+  </header>
+
+  <div class="banner" id="banner" hidden>
+    <svg><use href="#i-warn"/></svg><span id="bannerText"></span>
+  </div>
+
+  <main class="workspace">
+    <section class="stage-col">
+      <div class="stage" id="stage">
+        <video id="video" playsinline muted autoplay></video>
+        <img class="still" id="still" alt="Image being evaluated" hidden>
+
+        <div class="text-state" id="textState" hidden>
+          <label for="textInput">State: any text or JSON the model should decide on</label>
+          <textarea id="textInput" spellcheck="false" placeholder="Paste a message, log line, record, or JSON…"></textarea>
+          <div class="row">
+            <button class="btn primary" id="textRun"><svg><use href="#i-play"/></svg>Decide <kbd>⌘ ↵</kbd></button>
+            <label class="toggle"><input type="checkbox" id="textAuto"> decide as I type</label>
+          </div>
+        </div>
+
+        <div class="stage-empty" id="stageEmpty">
+          <div class="inner">
+            <svg><use href="#i-camera"/></svg>
+            <h2 id="emptyTitle">Point a camera at the world</h2>
+            <p id="emptyText">Pick a source and every frame comes back with odds for each option of each question, computed in one pass of the model.</p>
+            <div class="row">
+              <button class="btn primary" id="emptyCamera"><svg><use href="#i-camera"/></svg>Start camera</button>
+              <button class="btn" id="emptyImage"><svg><use href="#i-upload"/></svg>Use an image</button>
+              <button class="btn ghost" id="emptyText2"><svg><use href="#i-text"/></svg>Text only</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="hud hud-tl">
+          <div class="segmented glass" role="group" aria-label="Source" id="sourceSwitch">
+            <button data-source="camera" aria-pressed="true"><svg><use href="#i-camera"/></svg><span>Camera</span></button>
+            <button data-source="screen" aria-pressed="false"><svg><use href="#i-screen"/></svg><span>Screen</span></button>
+            <button data-source="image" aria-pressed="false"><svg><use href="#i-image"/></svg><span>Image</span></button>
+            <button data-source="text" aria-pressed="false"><svg><use href="#i-text"/></svg><span>Text</span></button>
+          </div>
+        </div>
+        <div class="hud hud-tr">
+          <span class="chip glass" id="frameChip" title="Size sent to the model, and the image tokens it costs">–</span>
+          <button class="icon-btn" id="mirrorBtn" title="Mirror view (M)" aria-label="Mirror view" aria-pressed="true"><svg><use href="#i-flip"/></svg></button>
+          <button class="icon-btn" id="shotBtn" title="Snapshot with decisions (S)" aria-label="Snapshot"><svg><use href="#i-shot"/></svg></button>
+          <button class="icon-btn" id="pauseBtn" title="Pause (space)" aria-label="Pause"><svg><use href="#i-pause"/></svg></button>
+        </div>
+        <div class="hud hud-bl">
+          <span class="chip glass live-chip" id="liveChip"><span class="dot" id="liveDot"></span><span id="liveText">idle</span></span>
+        </div>
+
+        <div class="capture-ring" id="captureRing"></div>
+        <div class="veil" id="pausedVeil" hidden><div class="glass card-ish"><svg width="18" height="18"><use href="#i-pause"/></svg>Paused · <kbd>space</kbd> to resume</div></div>
+        <div class="veil drop-veil" id="dropVeil" hidden><div class="glass card-ish"><svg width="18" height="18"><use href="#i-upload"/></svg>Drop an image to evaluate it</div></div>
+      </div>
+
+      <div class="context-bar panel">
+        <label for="contextInput">Context</label>
+        <input id="contextInput" spellcheck="false" placeholder="Sent as the state with every frame">
+        <select class="select" id="presetSelect" aria-label="Question set"></select>
+      </div>
+
+      <section class="panel log-panel" aria-label="Activity">
+        <div class="panel-head">
+          <span class="panel-title">Activity</span>
+          <span class="panel-meta" id="logMeta">triggers and events</span>
+          <span class="spacer"></span>
+          <button class="btn small ghost" id="exportCsv" title="Download every recorded decision as CSV"><svg><use href="#i-download"/></svg>CSV</button>
+          <button class="btn small ghost" id="clearLog">Clear</button>
+        </div>
+        <ul class="log" id="log"></ul>
+      </section>
+    </section>
+
+    <section class="panel decisions-col" aria-label="Decisions">
+      <div class="panel-head">
+        <span class="panel-title">Decisions</span>
+        <span class="panel-meta" id="cardsMeta"></span>
+        <span class="spacer"></span>
+        <button class="icon-btn" id="densityBtn" title="Compact cards" aria-label="Compact cards" aria-pressed="false"><svg><use href="#i-rows"/></svg></button>
+        <button class="btn small" id="editBtn"><svg><use href="#i-list"/></svg>Edit</button>
+      </div>
+      <div class="cards" id="cards"></div>
+    </section>
+  </main>
+
+  <footer class="statusbar">
+    <span id="footLeft">API <code>POST /v1/systemone</code> · Workers AI compatible</span>
+    <span class="keys">
+      <span><kbd>E</kbd> questions</span><span><kbd>G</kbd> triggers</span><span><kbd>space</kbd> pause</span><span><kbd>S</kbd> snapshot</span><span><kbd>?</kbd> all shortcuts</span>
+    </span>
+  </footer>
+</div>
+
+<!-- Questions -->
+<aside class="drawer" id="editorDrawer" role="dialog" aria-modal="true" aria-labelledby="editorTitle">
+  <div class="drawer-head">
+    <div class="grow"><h2 id="editorTitle">Questions</h2><p>Change them live. No retraining: the schema is part of the input.</p></div>
+    <button class="icon-btn" data-close aria-label="Close"><svg><use href="#i-close"/></svg></button>
+  </div>
+  <div class="drawer-tabs" role="tablist">
+    <button class="tab" role="tab" data-tab="builder" aria-selected="true">Builder</button>
+    <button class="tab" role="tab" data-tab="json" aria-selected="false">JSON</button>
+    <button class="tab" role="tab" data-tab="library" aria-selected="false">Library</button>
+  </div>
+  <div class="drawer-body">
+    <div data-panel="builder">
+      <div id="builder"></div>
+      <button class="btn" id="addQuestion"><svg><use href="#i-plus"/></svg>Add question</button>
+    </div>
+    <div data-panel="json" hidden style="height:100%;display:grid;grid-template-rows:minmax(0,1fr) auto">
+      <textarea class="code-editor" id="jsonEditor" spellcheck="false" aria-label="Questions as JSON"></textarea>
+      <div>
+        <ul class="errors" id="jsonErrors"></ul>
+        <div class="row wrap" style="margin-top:10px">
+          <button class="btn small" id="jsonFormat">Format</button>
+          <button class="btn small" id="jsonCopy"><svg><use href="#i-copy"/></svg>Copy</button>
+          <button class="btn small" id="jsonImport"><svg><use href="#i-upload"/></svg>Import</button>
+          <button class="btn small" id="jsonExport"><svg><use href="#i-download"/></svg>Export</button>
+          <button class="btn small" id="jsonShare"><svg><use href="#i-link"/></svg>Share link</button>
+        </div>
+      </div>
+    </div>
+    <div data-panel="library" hidden>
+      <div class="section-title">Built-in sets</div>
+      <div class="presets" id="presetGrid"></div>
+      <div class="section-title">Saved sets</div>
+      <div class="row" style="margin-bottom:10px">
+        <input class="input grow" id="saveName" placeholder="Name this set">
+        <button class="btn" id="saveSet">Save current</button>
+      </div>
+      <div class="saved" id="savedList"></div>
+    </div>
+  </div>
+  <div class="drawer-foot">
+    <span class="msg" id="editorMsg"></span>
+    <span class="spacer"></span>
+    <button class="btn ghost" id="editorRevert">Revert</button>
+    <button class="btn primary" id="editorApply">Apply <kbd>⌘ ↵</kbd></button>
+  </div>
+</aside>
+
+<!-- Triggers -->
+<aside class="drawer" id="rulesDrawer" role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+  <div class="drawer-head">
+    <div class="grow"><h2 id="rulesTitle">Triggers</h2><p>Fire an action when an answer holds long enough. Evaluated in your browser on every decision.</p></div>
+    <button class="icon-btn" data-close aria-label="Close"><svg><use href="#i-close"/></svg></button>
+  </div>
+  <div></div>
+  <div class="drawer-body"><div id="rulesList"></div></div>
+  <div class="drawer-foot">
+    <span class="msg" id="rulesMsg"></span>
+    <span class="spacer"></span>
+    <button class="btn primary" id="addRule"><svg><use href="#i-plus"/></svg>New trigger</button>
+  </div>
+</aside>
+
+<!-- Inspector -->
+<aside class="drawer" id="inspectorDrawer" role="dialog" aria-modal="true" aria-labelledby="inspectorTitle">
+  <div class="drawer-head">
+    <div class="grow"><h2 id="inspectorTitle">Inspector</h2><p>The backend, the last response, and the same request as code.</p></div>
+    <button class="icon-btn" data-close aria-label="Close"><svg><use href="#i-close"/></svg></button>
+  </div>
+  <div></div>
+  <div class="drawer-body">
+    <div class="section-title">Backend</div>
+    <dl class="kv" id="engineKv"></dl>
+    <div class="section-title">Last response</div>
+    <dl class="kv" id="timingKv"></dl>
+    <pre class="json-view" id="lastJson">No response yet.</pre>
+    <div class="section-title">Same request as code</div>
+    <div class="row wrap" style="margin-bottom:8px">
+      <button class="btn small" data-snippet="local"><svg><use href="#i-copy"/></svg>curl · this server</button>
+      <button class="btn small" data-snippet="workers"><svg><use href="#i-copy"/></svg>curl · Workers AI</button>
+      <button class="btn small" data-snippet="python"><svg><use href="#i-copy"/></svg>Python</button>
+    </div>
+    <p class="hint">Snippets carry your current questions and context. The image is left as a placeholder data URL.</p>
+  </div>
+  <div class="drawer-foot"><span class="msg" id="inspectorMsg"></span></div>
+</aside>
+
+<!-- Settings -->
+<aside class="drawer" id="settingsDrawer" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="drawer-head">
+    <div class="grow"><h2 id="settingsTitle">Settings</h2><p>Saved in this browser.</p></div>
+    <button class="icon-btn" data-close aria-label="Close"><svg><use href="#i-close"/></svg></button>
+  </div>
+  <div></div>
+  <div class="drawer-body" id="settingsBody">
+    <div class="section-title">Frames</div>
+    <label class="field"><span>Detail sent to the model</span>
+      <select class="select" id="setDetail" style="max-width:none"></select>
+      <small id="detailHint">Latency grows with image tokens. 352 px keeps a 16:9 frame at 66 tokens.</small>
+    </label>
+    <label class="field"><span>Max decisions per second</span>
+      <select class="select" id="setFps" style="max-width:none">
+        <option value="0">As fast as the model allows</option>
+        <option value="10">10</option><option value="5">5</option><option value="2">2</option><option value="1">1</option>
+      </select>
+    </label>
+    <label class="field"><span>JPEG quality <b id="qualityValue" class="mono"></b></span>
+      <input type="range" id="setQuality" min="0.5" max="0.95" step="0.05">
+    </label>
+    <label class="field"><span>Camera</span>
+      <select class="select" id="setCamera" style="max-width:none"><option value="">Default camera</option></select>
+    </label>
+    <label class="toggle field"><input type="checkbox" id="setMirrorSent"> Mirror frames sent to the model too (left/right then match what you see)</label>
+    <label class="toggle field"><input type="checkbox" id="setHiddenPause"> Pause while this tab is hidden</label>
+
+    <div class="section-title">Answers</div>
+    <label class="field"><span>Smoothing</span>
+      <select class="select" id="setSmoothing" style="max-width:none">
+        <option value="1">Off: show every frame as is</option>
+        <option value="0.6">Light</option>
+        <option value="0.35">Medium</option>
+        <option value="0.18">Strong</option>
+      </select>
+      <small>Averages probabilities over recent frames to stop flicker. Triggers use the smoothed values.</small>
+    </label>
+    <label class="toggle field"><input type="checkbox" id="setLogChanges"> Log every change of answer in Activity</label>
+    <label class="toggle field"><input type="checkbox" id="setSound"> Sounds for triggers</label>
+
+    <div class="section-title">Appearance</div>
+    <label class="field"><span>Theme</span>
+      <select class="select" id="setTheme" style="max-width:none">
+        <option value="system">Match system</option><option value="dark">Dark</option><option value="light">Light</option>
+      </select>
+    </label>
+    <div class="section-title">Reset</div>
+    <div class="row wrap">
+      <button class="btn small danger" id="resetQuestions">Default questions</button>
+      <button class="btn small danger" id="resetAll">Everything</button>
+    </div>
+  </div>
+  <div class="drawer-foot"><span class="msg">Changes apply immediately.</span></div>
+</aside>
+
+<div class="scrim" id="scrim"></div>
+
+<dialog class="dialog" id="helpDialog" aria-labelledby="helpTitle">
+  <div class="drawer-head">
+    <div class="grow"><h2 id="helpTitle">Keyboard shortcuts</h2></div>
+    <button class="icon-btn" data-close aria-label="Close"><svg><use href="#i-close"/></svg></button>
+  </div>
+  <dl class="shortcuts">
+    <dt><kbd>space</kbd></dt><dd>Pause or resume</dd>
+    <dt><kbd>E</kbd></dt><dd>Edit questions</dd>
+    <dt><kbd>⌘</kbd> <kbd>↵</kbd></dt><dd>Apply questions · run text</dd>
+    <dt><kbd>G</kbd></dt><dd>Triggers</dd>
+    <dt><kbd>I</kbd></dt><dd>Inspector</dd>
+    <dt><kbd>,</kbd></dt><dd>Settings</dd>
+    <dt><kbd>1</kbd>–<kbd>4</kbd></dt><dd>Camera · screen · image · text</dd>
+    <dt><kbd>S</kbd></dt><dd>Snapshot with decisions</dd>
+    <dt><kbd>M</kbd></dt><dd>Mirror view</dd>
+    <dt><kbd>C</kbd></dt><dd>Compact cards</dd>
+    <dt><kbd>L</kbd></dt><dd>Light or dark theme</dd>
+    <dt><kbd>⇧</kbd> <kbd>D</kbd></dt><dd>Back to the default questions</dd>
+    <dt><kbd>esc</kbd></dt><dd>Close a panel</dd>
+  </dl>
+</dialog>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+<div class="tooltip" id="tooltip" hidden></div>
+<input type="file" id="fileInput" accept="image/png,image/jpeg,image/webp" hidden>
+<input type="file" id="jsonFile" accept="application/json,.json" hidden>
+</body>
+</html>

@@ -7,12 +7,6 @@ import ConfigPanel from './ConfigPanel';
 import ResponsePanel from './ResponsePanel';
 import { Card, CardContent } from '@/components/ui/card';
 
-// Define types for our component
-type AIResponse = {
-  text: string;
-  timestamp: Date;
-};
-
 const MotionCard = motion(Card);
 
 export default function CameraFeed() {
